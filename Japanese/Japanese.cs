@@ -434,7 +434,7 @@ public static class Typer
 
     public static string ToKana(string text, bool forceConversion = false, bool isRealtimeInput = false)
     {
-        string answer = string.Empty;
+        var answer = string.Empty;
     //int 
 
     Start:
@@ -456,20 +456,20 @@ public static class Typer
                 }
             }
 
-            int startingChar = (text.Length >= 3 && text[0] == text[1] && char.ToLower(text[0]) != 'n' && !IsVowel(text[0])) ? 1 : 0;
+            var startingChar = text.Length >= 3 && text[0] == text[1] && char.ToLower(text[0]) != 'n' && !IsVowel(text[0]) ? 1 : 0;
 
-            for (int i = 4; i >= 1; i--)
+            for (var i = 4; i >= 1; i--)
             {
                 if (text.Length < i + startingChar)
                     continue;
 
-                string key = text.Substring(startingChar, i);
-                bool isKatakana = IsAllUpper(key);
+                var key = text.Substring(startingChar, i);
+                var isKatakana = IsAllUpper(key);
                 key = key.ToLower();
 
                 if (isKatakana)
                 {
-                    if (toKatakana.TryGetValue(key, out string kana))
+                    if (toKatakana.TryGetValue(key, out var kana))
                     {
                         text = text[(i + startingChar)..];
                         if (startingChar == 1)
@@ -480,7 +480,7 @@ public static class Typer
                 }
                 else
                 {
-                    if (toHiragana.TryGetValue(key, out string kana))
+                    if (toHiragana.TryGetValue(key, out var kana))
                     {
                         text = text[(i + startingChar)..];
                         if (startingChar == 1)
@@ -532,7 +532,7 @@ public static class Typer
 
     public static char ToHiragana(char c)
     {
-        int index = Katakana.IndexOf(c);
+        var index = Katakana.IndexOf(c);
         if (index != -1)
             return Hiragana[index];
         else
@@ -543,7 +543,7 @@ public static class Typer
 
     public static char ToKatakana(char c)
     {
-        int index = Hiragana.IndexOf(c);
+        var index = Hiragana.IndexOf(c);
         if (index != -1)
             return Katakana[index];
         else
@@ -573,7 +573,7 @@ public static class Typer
 
     public static IEnumerable<Word> SearchForWords(string searchString, out string searchArgs)
     {
-        searchArgs = String.Empty;
+        searchArgs = string.Empty;
         if (string.IsNullOrWhiteSpace(searchString)) return null;
 
         List<string> anyKanaSearch = new();
@@ -591,7 +591,7 @@ public static class Typer
             {
                 if (str[0] == '*')
                 {
-                    string exactString = str[1..];
+                    var exactString = str[1..];
                     if (IsKana(exactString))
                         exactKanaSearch.Add(exactString);
                     else
@@ -601,7 +601,7 @@ public static class Typer
 
                 if (str[0] == '!')
                 {
-                    string exactString = ToKana(str[1..]);
+                    var exactString = ToKana(str[1..]);
                     if (IsKana(exactString))
                         anyKanaSearch.Add(exactString);
                     else
@@ -609,7 +609,7 @@ public static class Typer
                     continue;
                 }
 
-                string kana = ToKana(str);
+                var kana = ToKana(str);
                 if (IsKana(kana) && !PossibleEnglishWord(str))
                 {
                     if (HasKatakana(kana))
@@ -720,23 +720,23 @@ public class Sentence
         Sentence sentence = new();
         if (KanjiString == null)
             throw new ArgumentNullException("Baka! Sentence parcer cannot parse null string!");
-        Word[] noPhrases = Dictionary.Words.AsParallel().Where(x => !x.Senses.SelectMany(x => x.Info).Any(y => y == "exp")).ToArray();
-        Word[] particles = Dictionary.Words.AsParallel().Where(x => x.Senses.SelectMany(x => x.Info).Any(info => info == "prt")).ToArray();
+        var noPhrases = Dictionary.Words.AsParallel().Where(x => !x.Senses.SelectMany(x => x.Info).Any(y => y == "exp")).ToArray();
+        var particles = Dictionary.Words.AsParallel().Where(x => x.Senses.SelectMany(x => x.Info).Any(info => info == "prt")).ToArray();
 
 
         while (KanjiString.Length != 0)
         {
             Token lastExactMatch = null;
-            Word[] lastMatches = noPhrases;
-            Word[] matches = noPhrases;
-            for (int i = 1; i <= KanjiString.Length; i++)
+            var lastMatches = noPhrases;
+            var matches = noPhrases;
+            for (var i = 1; i <= KanjiString.Length; i++)
             {
                 lastMatches = matches;
-                string searchString = KanjiString[..i];
+                var searchString = KanjiString[..i];
                 //if (JapaneseTyper.IsKana(searchString))
                 matches = lastMatches.AsParallel().Where(x => x.Kanji.Any(k => k.StartsWith(searchString)) || x.Kana.Any(k => k.StartsWith(searchString))).ToArray();
 
-                Word match = matches.AsParallel().FirstOrDefault(x => x.Kanji.Any(k => k.Equals(searchString)) || x.Kana.Any(k => k.Equals(searchString)));
+                var match = matches.AsParallel().FirstOrDefault(x => x.Kanji.Any(k => k.Equals(searchString)) || x.Kana.Any(k => k.Equals(searchString)));
 
                 if (match != null)
                     lastExactMatch = new Token() { isExact = true, isCorrect = true, String = searchString, Word = match };
@@ -745,7 +745,7 @@ public class Sentence
 
                 if (matches.Length == 1)
                 {
-                    int length = 0;
+                    var length = 0;
                     if (matches.First().Kanji.Concat(matches.First().Kana).Any(k => { length = k.Length; return k.Equals(KanjiString[..k.Length]); }))
                     {
                         sentence.Tokens.Add(new() { isCorrect = true, isExact = true, Word = matches.First(), String = KanjiString[..length] });
@@ -818,7 +818,7 @@ public class Sentence
         //});
 
         //Word[] noPhrases = Database.Words.AsParallel().Where(x => !x.Senses.SelectMany(x => x.Info).All(y => y == "exp")).ToArray();
-        Word[] particles = Dictionary.Words.AsParallel().Where(x => x.Senses.SelectMany(x => x.Info).Any(info => info == "prt")).ToArray();
+        var particles = Dictionary.Words.AsParallel().Where(x => x.Senses.SelectMany(x => x.Info).Any(info => info == "prt")).ToArray();
         //(string stem, Word word)[] verbStems = Database.Words.AsParallel().Where(x => x.Infos.Any(i => i.StartsWith("v1") || (i.StartsWith("v5") && i.Length == 3))).Select<Word,(string stem,Word word)>(x =>
         //{
         //    string stem = null;
@@ -840,27 +840,27 @@ public class Sentence
             throw new ArgumentNullException("Baka! Sentence parcer cannot parse empty string!");
         //string[] splitSentence = KanjiString.Split(new char[] {' ',',','\n','\r', '、', '。'}, 3);
         //Token[] tokens = splitSentence.AsParallel().
-        Word[][] likelyTokens = KanjiString.AsParallel().Select((firstChar, i) =>
+        var likelyTokens = KanjiString.AsParallel().Select((firstChar, i) =>
         {
             List<Word> words = new();
-            int notFoundStreak = 0;
-            bool verbFound = false;
-            for (int length = 1; true; length++)
+            var notFoundStreak = 0;
+            var verbFound = false;
+            for (var length = 1; true; length++)
             {
                 if (length + i > KanjiString.Length)
                     break;
 
-                string searchString = KanjiString.Substring(i, length);
-                bool isKana = Typer.IsKana(searchString);
+                var searchString = KanjiString.Substring(i, length);
+                var isKana = Typer.IsKana(searchString);
 
-                Word[] word = Dictionary.Words.Where(y => y.Kanji.Concat(y.Kana).Any(z => z == searchString)).ToArray();
+                var word = Dictionary.Words.Where(y => y.Kanji.Concat(y.Kana).Any(z => z == searchString)).ToArray();
                 //Word[] verbs = verbStems.Where(x => x.stem == searchString).Select(x => x.word).ToArray();
 
                 if (!word.Any())
                 {
                     notFoundStreak++;
 
-                    char lastChar = searchString[^1];
+                    var lastChar = searchString[^1];
                     //if (Database.Kanji.Any(k => k.Literal == firstChar) && JapaneseTyper.IsKana(lastChar))
 
                     if (notFoundStreak > 4)

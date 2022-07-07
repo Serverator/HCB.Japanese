@@ -80,8 +80,8 @@ public static class Dictionary
         (Kanji[] Kanji, Word[] Words) dictionary;
 
         using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("HCB.Japanese.Dictionary.gz"))
-            using (var decompressor = new GZipStream(stream, CompressionMode.Decompress))
-                dictionary = JsonSerializer.Deserialize<(Kanji[], Word[])>(decompressor, serializerOptions);
+        using (var decompressor = new GZipStream(stream, CompressionMode.Decompress))
+            dictionary = JsonSerializer.Deserialize<(Kanji[], Word[])>(decompressor, serializerOptions);
 
         if (dictionary.Kanji == null || dictionary.Words == null)
             throw new Exception("Oopsie happened!");
@@ -111,11 +111,10 @@ public static class Dictionary
     public static void RegenerateDatabase(string inputLocation = @"X:\", string outputLocation = @"C:\Users\Serverator\source\repos\Japanese\")
     {
 
-        if (!File.Exists($@"{
-        inputLocation}Kanjidic.xml") || !File.Exists($@"{inputLocation}JMDict.xml"))
+        if (!File.Exists($@"{inputLocation}Kanjidic.xml") || !File.Exists($@"{inputLocation}JMDict.xml"))
             throw new FileNotFoundException($"Kanjidic or JMDict not found at \"{inputLocation}\"");
 
-        XmlDocument KanjiDic = new XmlDocument();
+        var KanjiDic = new XmlDocument();
         KanjiDic.Load($@"{inputLocation}Kanjidic.xml");
 
         var kanjiDic = KanjiDic.DocumentElement.SelectNodes("character").Cast<XmlNode>().AsParallel().Select(x =>
@@ -132,7 +131,7 @@ public static class Dictionary
             };
         }).OrderBy(x => x.Frequency != 0 ? x.Frequency : 9999).ToArray();
 
-        XmlDocument JMDict = new XmlDocument();
+        var JMDict = new XmlDocument();
         JMDict.Load($@"{inputLocation}JMDict.xml");
 
         var wordDic = JMDict.DocumentElement.ChildNodes.Cast<XmlNode>().AsParallel().Select(x =>
@@ -155,7 +154,7 @@ public static class Dictionary
             word.Kanji = x.SelectNodes("k_ele/keb").Cast<XmlNode>().Select(x => x.InnerText).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
             word.Kana = x.SelectNodes("r_ele/reb").Cast<XmlNode>().Select(x => x.InnerText).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
             word.WordFrequency = x.SelectNodes("k_ele/ke_pri").Cast<XmlNode>().Where(x => x.InnerText.Contains("nf"))
-                .Select<XmlNode, int>(x => int.Parse(x.InnerText[2..])).FirstOrDefault();
+                .Select(x => int.Parse(x.InnerText[2..])).FirstOrDefault();
             word.OnlyKana = !word.Kanji.Any();
 
             if (word is VerbWord)
@@ -171,7 +170,7 @@ public static class Dictionary
                 else if (verb.Infos.Any(i => i.StartsWith("v5") && i.Length == 3))
                 {
                     verb.VerbType = VerbWord.VerbTypes.Godan;
-                    char c = Typer.VerbEndings[verb.Infos.First(i => i.StartsWith("v5"))[2]];
+                    var c = Typer.VerbEndings[verb.Infos.First(i => i.StartsWith("v5"))[2]];
                     if (verb.MainReading[^1] == c)
                         verb.Stem = verb.MainReading[..^1];
                 }
@@ -193,8 +192,8 @@ public static class Dictionary
             // Parses WKKanji and runs search for each kanji element
             JsonDocument.Parse(File.ReadAllText($@"{inputLocation}WKKanji.json")).RootElement.EnumerateArray().AsParallel().Select(x => x.GetProperty("data")).ForAll(wkKanji =>
             {
-                char kanjiChar = wkKanji.GetProperty("characters").GetString()[0];
-                Kanji kanji = kanjiDic.FirstOrDefault(x => x.Literal == kanjiChar);
+                var kanjiChar = wkKanji.GetProperty("characters").GetString()[0];
+                var kanji = kanjiDic.FirstOrDefault(x => x.Literal == kanjiChar);
                 if (kanji != null)
                     kanji.WKLevel = wkKanji.GetProperty("level").GetInt32();
                 else
@@ -204,8 +203,8 @@ public static class Dictionary
             // Parses WKVocab to set level to every word
             JsonDocument.Parse(File.ReadAllText($@"{inputLocation}WKVocab.json")).RootElement.EnumerateArray().AsParallel().Select(x => x.GetProperty("data")).ForAll(wkWord =>
             {
-                string kanjis = wkWord.GetProperty("characters").GetString();
-                Word word = wordDic.FirstOrDefault(x => x.Kanji.Any(kanji => string.Equals(kanji, kanjis)));
+                var kanjis = wkWord.GetProperty("characters").GetString();
+                var word = wordDic.FirstOrDefault(x => x.Kanji.Any(kanji => string.Equals(kanji, kanjis)));
                 if (word != null)
                     word.WKLevel = wkWord.GetProperty("level").GetInt32();
             });
@@ -218,14 +217,14 @@ public static class Dictionary
         //File.WriteAllBytes($@"X:\Dictionary.json", json);
 
         using (var writer = File.OpenWrite($@"{outputLocation}Dictionary.gz"))
-            using (Stream stream = new MemoryStream(json))
-                using (var compress = new GZipStream(writer, CompressionLevel.Optimal, false))
-                    stream.CopyTo(compress);
+        using (Stream stream = new MemoryStream(json))
+        using (var compress = new GZipStream(writer, CompressionLevel.Optimal, false))
+            stream.CopyTo(compress);
 
-        
-            //File.WriteAllText($@"{outputLocation}Words.json", JsonSerializer.Serialize(wordDic, serializerOptions));
 
-            static int ParseOrNull(string value) => int.TryParse(value, out var number) ? number : 0;
+        //File.WriteAllText($@"{outputLocation}Words.json", JsonSerializer.Serialize(wordDic, serializerOptions));
+
+        static int ParseOrNull(string value) => int.TryParse(value, out var number) ? number : 0;
     }
 #endif
 }
@@ -251,7 +250,7 @@ public class BaseClassConverter : JsonConverter<Word>
             throw new JsonException();
 
         Word baseClass;
-        TypeDiscriminator typeDiscriminator = (TypeDiscriminator)reader.GetInt32();
+        var typeDiscriminator = (TypeDiscriminator)reader.GetInt32();
 
         if (!reader.Read() || reader.GetString() != "Value" || !reader.Read() || reader.TokenType != JsonTokenType.StartObject)
             throw new JsonException();
@@ -286,7 +285,7 @@ public class BaseClassConverter : JsonConverter<Word>
         else
             throw new NotImplementedException();
         writer.WritePropertyName("Value");
-        JsonSerializer.Serialize(writer,value, value.GetType(), serializerOptions);
+        JsonSerializer.Serialize(writer, value, value.GetType(), serializerOptions);
 
         writer.WriteEndObject();
     }

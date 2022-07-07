@@ -22,7 +22,7 @@ public class Kanji
 
 public static class Kana
 {
-    public enum Gyou { None, K, S, T, N, H, M, Y, R, W};
+    public enum Gyou { None, K, S, T, N, H, M, Y, R, W };
     public enum Dan { A, I, U, E, O, None };
     public enum Mark { None, Dakuten, Handakuten };
 
