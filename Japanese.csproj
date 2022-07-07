@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AssemblyName>HCB.Japanese</AssemblyName>
+    <RootNamespace>HCB.Japanese</RootNamespace>
+    <Authors>Serverator</Authors>
+    <Company>HCB</Company>
+    <Product>Japanese Library</Product>
+    <Version>0.1.0</Version>
+    <PackageId>HCB.Japanese</PackageId>
+    <Description>Contains japanese dictionary and parsers</Description>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Dictionary.gz" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Dictionary.gz" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HCBHelper\HCBHelper.csproj" />
+  </ItemGroup>
+
+</Project>
