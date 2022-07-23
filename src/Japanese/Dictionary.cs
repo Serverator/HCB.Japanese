@@ -1,8 +1,10 @@
 ﻿using System.IO.Compression;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace HCB.Japanese;
@@ -16,7 +18,7 @@ public static class Dictionary
     /// <summary>
     /// Asynchronous task of initializing
     /// </summary>
-    private static Task InitTask { get; set; }
+    public static Task InitTask { get; set; }
 
     /// <summary>
     /// Shows if dictionary is initialized
@@ -98,7 +100,7 @@ public static class Dictionary
 
         using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("HCB.Dictionary.gz"))
         using (var decompressor = new GZipStream(stream, CompressionMode.Decompress))
-            dictionary = JsonSerializer.Deserialize<(Kanji[], Word[])>(decompressor, serializerOptions);
+            dictionary = JsonSerializer.Deserialize<(Kanji[], Word[])>(decompressor, SerializerOptions);
 
         Kanji = dictionary.Kanji;
         Words = dictionary.Words;
@@ -144,7 +146,7 @@ public static class Dictionary
 
         using var json = File.OpenRead($"{dictionaryLocation}Dictionary.gz");
         using var gzipStream = new GZipStream(json, CompressionMode.Decompress);
-        dictionary = JsonSerializer.Deserialize<(Kanji[], Word[])>(gzipStream, serializerOptions);
+        dictionary = JsonSerializer.Deserialize<(Kanji[], Word[])>(gzipStream, SerializerOptions);
 
         Kanji = dictionary.Kanji;
         Words = dictionary.Words;
@@ -158,7 +160,7 @@ public static class Dictionary
     /// </summary>
     public static Task InitializeAsync(string dictionaryLocation = @"C:\") => InitTask = Task.Run(() => Initialize(dictionaryLocation));
 
-    private static JsonSerializerOptions serializerOptions => new() { IncludeFields = true, IgnoreReadOnlyProperties = true, Converters = { new WordClassConverter() }, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault };
+    private static JsonSerializerOptions SerializerOptions => new() { IncludeFields = true, IgnoreReadOnlyProperties = true, Converters = { new WordClassConverter() }, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault };
 
     /// <summary>
     /// Fully rebuilds the dictionary file <br/>
@@ -216,14 +218,14 @@ public static class Dictionary
                 return word;
             }).ToArray();
 
-        var WKLevels = DeserializeJsonFromUri<((char literal, int level)[] kanjis, (string reading, int level)[] words)>(WKLevelUri);
-        WKLevels.kanjis.AsParallel().ForAll(x => kanjiDic.FirstOrDefault(w => w.Literal == x.literal).WKLevel = x.level);
-        WKLevels.words.AsParallel().ForAll(x => wordDic.FirstOrDefault(w => w.MainReading == x.reading).WKLevel = x.level);
+        var (kanjis, words) = DeserializeJsonFromUri<((char literal, int level)[] kanjis, (string reading, int level)[] words)>(WKLevelUri);
+        kanjis.AsParallel().ForAll(x => kanjiDic.FirstOrDefault(w => w.Literal == x.literal).WKLevel = x.level);
+        words.AsParallel().ForAll(x => wordDic.FirstOrDefault(w => w.MainReading == x.reading).WKLevel = x.level);
 
         wordDic = wordDic.OrderBy(x => x.WordFrequency != 0 ? x.WordFrequency : int.MaxValue).ThenBy(x => x.WKLevel != 0 ? x.WKLevel : int.MaxValue).ToArray();
         kanjiDic = kanjiDic.OrderBy(x => x.Frequency != 0 ? x.Frequency : int.MaxValue).ThenBy(x => x.JLPT == 0).ToArray();
 
-        var json = JsonSerializer.SerializeToUtf8Bytes<(object[], object[])>(new(kanjiDic, wordDic), serializerOptions);
+        var json = JsonSerializer.SerializeToUtf8Bytes<(object[], object[])>(new(kanjiDic, wordDic), SerializerOptions);
 
         using (var writer = File.OpenWrite($@"{outputLocation}Dictionary.gz"))
         using (Stream stream = new MemoryStream(json))
@@ -235,9 +237,9 @@ public static class Dictionary
 
         static XDocument GetXDocFromUri(string url, bool needsParsing = false)
         {
-            using var webClient = new WebClient();
-            using var httpStream = webClient.OpenRead(url);
-            using var gzipStream = new GZipStream(httpStream, CompressionMode.Decompress);
+            using var httpClient = new HttpClient();
+            using var stream = httpClient.GetStreamAsync(url).WaitForResult();
+            using var gzipStream = new GZipStream(stream, CompressionMode.Decompress);
             // Because XML to Linq cannot give me a reference handle, I have to parse references out of the original file
             if (needsParsing)
             {
@@ -251,10 +253,10 @@ public static class Dictionary
 
         static T DeserializeJsonFromUri<T>(string url)
         {
-            using var webClient = new WebClient();
-            using var httpStream = webClient.OpenRead(url);
-            using var gzipStream = new GZipStream(httpStream, CompressionMode.Decompress);
-            return JsonSerializer.Deserialize<T>(gzipStream, serializerOptions);
+            using var httpClient = new HttpClient();
+            using var stream = httpClient.GetStreamAsync(url).WaitForResult();
+            using var gzipStream = new GZipStream(stream, CompressionMode.Decompress);
+            return JsonSerializer.Deserialize<T>(gzipStream, SerializerOptions);
         }
     }
 
@@ -281,26 +283,19 @@ public static class Dictionary
             if (reader.TokenType != JsonTokenType.StartObject || !reader.Read() || reader.TokenType != JsonTokenType.PropertyName || reader.GetString() != "Type" || !reader.Read() || reader.TokenType != JsonTokenType.Number)
                 throw new JsonException();
 
-            Word baseClass;
+            
             var typeDiscriminator = (WordType)reader.GetInt32();
 
             if (!reader.Read() || reader.GetString() != "Value" || !reader.Read() || reader.TokenType != JsonTokenType.StartObject)
                 throw new JsonException();
 
-            switch (typeDiscriminator)
+            Word baseClass = typeDiscriminator switch
             {
-                case WordType.Word:
-                    baseClass = JsonSerializer.Deserialize<Word>(ref reader, serializerOptions);
-                    break;
-                case WordType.Verb:
-                    baseClass = JsonSerializer.Deserialize<VerbWord>(ref reader, serializerOptions);
-                    break;
-                case WordType.Adjective:
-                    baseClass = JsonSerializer.Deserialize<AdjectiveWord>(ref reader, serializerOptions);
-                    break;
-                default:
-                    throw new NotSupportedException();
-            }
+                WordType.Word => JsonSerializer.Deserialize<Word>(ref reader, serializerOptions),
+                WordType.Verb => JsonSerializer.Deserialize<VerbWord>(ref reader, serializerOptions),
+                WordType.Adjective => JsonSerializer.Deserialize<AdjectiveWord>(ref reader, serializerOptions),
+                _ => throw new NotSupportedException(),
+            };
 
             if (!reader.Read() || reader.TokenType != JsonTokenType.EndObject)
                 throw new JsonException();

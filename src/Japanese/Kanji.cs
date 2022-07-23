@@ -10,12 +10,14 @@ namespace HCB.Japanese;
 [DebuggerDisplay("{Literal.ToString()} - {Frequency}")]
 public class Kanji
 {
-    public char Literal;
-    public string[] Meanings = null;
-    public string[] KunReadings = null;
-    public string[] OnReadings = null;
-    public int Grade = 0;
-    public int JLPT = 0;
-    public int Frequency = 0;
-    public int WKLevel = 0;
+    public char Literal { get; set; }
+    public string[] Meanings { get; set; } = null;
+    public string[] KunReadings { get; set; } = null;
+    public string[] OnReadings { get; set; } = null;
+    public int Grade { get; set; } = 0;
+    public int JLPT { get; set; } = 0;
+    public int Frequency { get; set; } = 0;
+    public int WKLevel { get; set; } = 0;
+
+    public override string ToString() => Literal.ToString();
 }

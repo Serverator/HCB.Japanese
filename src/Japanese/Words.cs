@@ -11,22 +11,22 @@ namespace HCB.Japanese;
 [DebuggerDisplay("{MainReading} ({Kana[0]}) - {Meanings[0]}")]
 public record Word
 {
-    public int WordFrequency = 0;
-    public int WKLevel = 0;
+    public int WordFrequency { get; set; } = 0;
+    public int WKLevel { get; set; } = 0;
 
-    public string[] Kanji = null;
-    public string[] Kana = null;
-    public (string[] Info, string[] Meaning)[] Senses = null;
+    public string[] Kanji { get; set; } = null;
+    public string[] Kana { get; set; } = null;
+    public (string[] Info, string[] Meaning)[] Senses { get; set; } = null;
 
     #region Get properties
     [JsonIgnore]
-    public bool OnlyKana => !Kanji.Any();
+    public bool OnlyKana => !Kanji?.Any() ?? true;
     [JsonIgnore]
-    public bool UsuallyKana => OnlyKana || Senses.Any(s => s.Info.Any(i => i == "uk"));
+    public bool UsuallyKana => OnlyKana || (Senses?.Any(s => s.Info.Any(i => i == "uk")) ?? false);
     [JsonIgnore]
-    public IEnumerable<Kanji> UsedKanji => Kanji.ConcatString().Where(x => !Japanese.Kana.IsKana(x)).Distinct().Select(x => Dictionary.Kanji.FirstOrDefault(y => y.Literal == x)).Where(x => x != null);
+    public IEnumerable<Kanji> UsedKanji => Kanji?.ConcatString().Where(x => !Japanese.Kana.IsKana(x)).Distinct().Select(x => Dictionary.Kanji.FirstOrDefault(y => y.Literal == x)).Where(x => x != null);
     [JsonIgnore]
-    public string MainReading => UsuallyKana ? Kana.FirstOrDefault() : (Kanji.FirstOrDefault() ?? Kana.FirstOrDefault());
+    public string MainReading => UsuallyKana ? Kana?.FirstOrDefault() : (Kanji?.FirstOrDefault() ?? Kana?.FirstOrDefault());
     [JsonIgnore]
     public string MainMeaning => Senses?.FirstOrDefault().Meaning?.FirstOrDefault() ?? "";
     [JsonIgnore]
@@ -198,6 +198,8 @@ public record Word
             new ("uK","word usually written using kanji alone")
         });
     #endregion
+
+    public override string ToString() => $"{MainReading} ({Kana[0]}) - {Meanings[0]}";
 }
 
 
@@ -206,10 +208,14 @@ public record VerbWord : Word
     public enum VerbTypes { Ichidan, Godan, Irregular, Suru, Nidan, Yodan, Other };
     public string Stem;
     public VerbTypes Type;
+
+    public override string ToString() => $"{MainReading} ({Kana[0]}) - {Meanings[0]}";
 }
 
 public record AdjectiveWord : Word
 {
     public enum AdjectiveType { I, Na, Other };
     public AdjectiveType Type;
+
+    public override string ToString() => $"{MainReading} ({Kana[0]}) - {Meanings[0]}";
 }

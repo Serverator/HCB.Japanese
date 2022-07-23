@@ -7,6 +7,12 @@ public static class Extensions
         return source.IndexOf(item, EqualityComparer<T>.Default);
     }
 
+    public static T WaitForResult<T>(this Task<T> task)
+    {
+        task.Wait();
+        return task.Result;
+    }
+
     public static int IndexOf<T>(this IEnumerable<T> source, T item, IEqualityComparer<T> equalityComparer)
     {
         if (source is null)
